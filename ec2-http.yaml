@@ -1,0 +1,83 @@
+---
+Parameters:
+  SSHKey:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Name of a existing KeyPair to enable SSH access to the instance.
+  
+  AvailabilityZone:
+    Type: String
+    Default: us-east-1a
+    AllowedValues:
+      - us-east-1a
+      - us-east-1b
+      - us-east-1c
+      - us-east-1d
+      - us-east-1e
+      - us-east-1f
+    Description: Availability Zone where the instance will be launched. The default is us-east-1a.
+
+  EC2AMI:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
+    Description: AMI used to launch the instance. By default it is the latest Amazon Linux 2.
+
+  EBSVolumeSize:
+    Type: Number
+    Default: 8
+    Description: Size of the EBS volume used by the instance. Default is 8GB.
+
+  SGCidrBlockSSH:
+    Type: String
+    Default: 0.0.0.0/0
+    Description: CIDR IP Block allowed to access the instance using SSH. Default is any IP.
+
+  SGCidrBlockHTTP:
+    Type: String
+    Default: 0.0.0.0/0
+    Description: CIDR IP Block allowed to make HTTP requests to the instance. Default is any IP.
+
+Resources:
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: !Ref AvailabilityZone
+      InstanceType: t2.micro
+      ImageId: !Ref EC2AMI
+      KeyName: !Ref SSHKey
+      SecurityGroups:
+        - !Ref CFSecurityGroupInboundSSH
+        - !Ref CFSecurityGroupInboundHTTP
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeType: gp2
+            VolumeSize: !Ref EBSVolumeSize
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash -xe
+          yum update -y
+          yum install -y httpd
+          systemctl start httpd
+          systemctl enable httpd
+          echo "EC2 Instance with HTTP Server successfully installed!" > /var/www/html/index.html
+          echo "This CloudFormation Template was made by Luiz Scofield." >> /var/www/html/index.html
+
+  CFSecurityGroupInboundSSH:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Inbound SSH
+      SecurityGroupIngress:
+      - CidrIp: !Ref SGCidrBlockSSH
+        FromPort: 22
+        IpProtocol: tcp
+        ToPort: 22
+
+  CFSecurityGroupInboundHTTP:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Inbound HTTP
+      SecurityGroupIngress:
+      - CidrIp: !Ref SGCidrBlockHTTP
+        FromPort: 80
+        IpProtocol: tcp
+        ToPort: 80
