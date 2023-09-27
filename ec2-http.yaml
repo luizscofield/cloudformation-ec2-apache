@@ -16,6 +16,11 @@ Parameters:
       - us-east-1f
     Description: Availability Zone where the instance will be launched. The default is us-east-1a.
 
+  EC2Name:
+    Type: String
+    Default: EC2Instance
+    Description: Name Tag for the EC2 instance. Default is EC2Instance.
+
   EC2AMI:
     Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
     Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
@@ -52,6 +57,9 @@ Resources:
           Ebs:
             VolumeType: gp2
             VolumeSize: !Ref EBSVolumeSize
+      Tags:
+        - Key: "Name"
+          Value: !Ref EC2Name
       UserData:
         Fn::Base64: |
           #!/bin/bash -xe
@@ -59,8 +67,16 @@ Resources:
           yum install -y httpd
           systemctl start httpd
           systemctl enable httpd
-          echo "EC2 Instance with HTTP Server successfully installed!" > /var/www/html/index.html
-          echo "This CloudFormation Template was made by Luiz Scofield." >> /var/www/html/index.html
+          echo "<!DOCTYPE html>" > /var/www/html/index.html
+          echo "<html>" >> /var/www/html/index.html
+          echo "<head>" >> /var/www/html/index.html
+          echo "<title>EC2 Instance</title>" >> /var/www/html/index.html
+          echo "</head>" >> /var/www/html/index.html
+          echo "<body>" >> /var/www/html/index.html
+          echo "<h1>EC2 Instance with HTTP Server successfully installed!</h1>" >> /var/www/html/index.html
+          echo "<h1>This CloudFormation Template was made by Luiz Scofield.</h1>" >> /var/www/html/index.html
+          echo "</body>" >> /var/www/html/index.html
+          echo "</html>" >> /var/www/html/index.html
 
   CFSecurityGroupInboundSSH:
     Type: AWS::EC2::SecurityGroup
